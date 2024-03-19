@@ -95,7 +95,7 @@ async function iniciar() {
     }
 }
 
-const port = process.env.PORT || 3001; 
+const port = process.env.PORT || 3003; 
 
 app.get('/over-ht', (req, res) => {
     const horaAtual = new Date().toLocaleString();

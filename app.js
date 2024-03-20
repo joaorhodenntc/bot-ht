@@ -1,6 +1,7 @@
 const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
+require('dotenv').config();
 
 const token = '6416421723:AAGcrBVbPY9E8-bIdK_4-AeM7t1KCtpn4AA'
 const chat_bot = '-1001682222531'
@@ -15,6 +16,8 @@ async function enviarMensagemTelegram(chat_id, mensagem) {
     }
 }
 
+const apiKey = process.env.RAPIDAPI_KEY;
+
 const options = {
   method: 'GET',
   url: 'https://soccer-football-info.p.rapidapi.com/live/full/',
@@ -24,7 +27,7 @@ const options = {
     e: 'no'
   },
   headers: {
-    'X-RapidAPI-Key': '4a87053b30mshad9163ef45410adp17c4dbjsn0d469d135af5',
+    'X-RapidAPI-Key': apiKey,
     'X-RapidAPI-Host': 'soccer-football-info.p.rapidapi.com'
   }
 };

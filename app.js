@@ -4,23 +4,10 @@ const express = require('express');
 
 const token = '6416421723:AAGcrBVbPY9E8-bIdK_4-AeM7t1KCtpn4AA'
 const chat_bot = '-1001682222531'
-const chat_error = '-1002016006632'
 const bot = new TelegramBot(token, { polling: false });
 const app = express();
 
-async function obterPartidas() {
-    const url = "https://apiv3.apifootball.com/?action=get_events&match_live=1&APIkey=ce1a9e39eaa2a1d13ae756306d88205321727bf0a07687a249b5c9f786eca0ff";
-    const response = await axios.get(url);
-    return response.data;
-}
-
-async function obterOdds(idPartida){ 
-    const url = `https://apiv3.apifootball.com/?action=get_odds&APIkey=ce1a9e39eaa2a1d13ae756306d88205321727bf0a07687a249b5c9f786eca0ff&match_id=${idPartida}`
-    const response = await axios.get(url);
-    return response.data;
-}
-
-async function enviarMensagemTelegram(chat_id,mensagem) {
+async function enviarMensagemTelegram(chat_id, mensagem) {
     try {
         await bot.sendMessage(chat_id, mensagem, { parse_mode: 'Markdown' });
     } catch (error) {
@@ -28,15 +15,29 @@ async function enviarMensagemTelegram(chat_id,mensagem) {
     }
 }
 
-function casaFavoritoPressao(apHome, apAway, oddHome, scoreHome, scoreAway, idPartida, minutes, partidasNotificadas){
-    if((oddHome<=1.40) && ((apHome/minutes)>=1) && (apHome>apAway) && scoreHome<=scoreAway && !partidasNotificadas.has(idPartida)){
-        return true
+const options = {
+  method: 'GET',
+  url: 'https://soccer-football-info.p.rapidapi.com/live/full/',
+  params: {
+    l: 'en_US',
+    f: 'json',
+    e: 'no'
+  },
+  headers: {
+    'X-RapidAPI-Key': '4a87053b30mshad9163ef45410adp17c4dbjsn0d469d135af5',
+    'X-RapidAPI-Host': 'soccer-football-info.p.rapidapi.com'
+  }
+};
+
+function casaFavoritoPressao(apCasa, apFora, oddCasa, placarCasa, placarFora, idPartida, minutos, partidasNotificadas){
+    if((oddCasa <= 1.40) && ((apCasa/minutos)>=1) && (apCasa>apFora) && placarCasa<=placarFora && !partidasNotificadas.has(idPartida)){
+        return true;
     }
 }
 
-function foraFavoritoPressao(apHome, apAway, oddAway, scoreHome, scoreAway, idPartida, minutes, partidasNotificadas){
-    if((oddAway<=1.40) && ((apAway/minutes)>=1) &&  (apAway>apHome) && scoreHome>=scoreAway && !partidasNotificadas.has(idPartida)){
-        return true
+function foraFavoritoPressao(apCasa, apFora, oddFora, placarCasa, placarFora, idPartida, minutos, partidasNotificadas){
+    if((oddFora <= 1.40) && ((apFora/minutos)>=1) && (apFora>apCasa) && placarCasa>=placarFora && !partidasNotificadas.has(idPartida)){
+        return true;
     }
 }
 
@@ -45,68 +46,59 @@ const partidasNotificadas = new Set();
 var qtdPartidas = 0;
 
 async function analisarPartidas(){
-    const dados = await obterPartidas();
-    qtdPartidas = dados.length;
-    for(let i=0; i<qtdPartidas; i++){
-        const nomeHome = dados[i].match_hometeam_name;
-        const nomeAway = dados[i].match_awayteam_name;
-        const minutes = dados[i].match_status;
-        if(minutes!='Finished' && (minutes>=20 && minutes<=25)){
-            const dangerousAttacks = dados[i].statistics.find(stat => stat.type === 'Dangerous Attacks');
-            partidasEmAnalise.add(`${nomeHome} x ${nomeAway}`);
-            if(dangerousAttacks){
-                const apHome = dangerousAttacks.home; 
-                const apAway = dangerousAttacks.away;
-                const idPartida = dados[i].match_id;
-                const scoreHome = dados[i].match_hometeam_score;
-                const scoreAway = dados[i].match_awayteam_score;
-                try{
-                    const odds = await obterOdds(idPartida);
-                    const oddHome = odds[4].odd_1;
-                    const oddAway = odds[4].odd_2;
-                    if(casaFavoritoPressao(apHome,apAway,oddHome,scoreHome,scoreAway,idPartida, minutes, partidasNotificadas) || foraFavoritoPressao(apHome,apAway,oddAway,scoreHome,scoreAway,idPartida, minutes, partidasNotificadas)){
-                            const mensagem = `*${nomeHome}* vs *${nomeAway}*\n\n⚽ Placar: ${scoreHome} x ${scoreAway}\n⚔️ Ataques Perigosos: ${apHome >= 20 ? '*' + apHome + '* 🔥' : apHome} x ${apAway >= 20 ? '*' + apAway + '* 🔥' : apAway}\n📈 Odds Pré: ${oddHome <= 1.40 ? oddHome + ' 👑' : oddHome} x ${oddAway <= 1.40 ? oddAway + ' 👑' : oddAway}\n🕛 Tempo: ${minutes}\n\n🤖 *Entrar em OVER GOL HT*`;
-                            await enviarMensagemTelegram(chat_bot,mensagem);
-                            console.log(mensagem);
-                            partidasNotificadas.add(idPartida);
-                    }
-                    } catch (error){
-                    }
-                
-            } 
-        } else {
-            partidasEmAnalise.delete(`${nomeHome} x ${nomeAway}`);
+    try {
+        const response = await axios.request(options);
+        const partidas = response.data.result;
+        qtdPartidas = partidas.length;
+        for(let i=0; i<qtdPartidas; i++){
+            const minutos = parseInt( partidas[i].timer.split(':')[0]);
+            const idPartida = partidas[i].id;
+            if(minutos>=20 && minutos<=25){
+                partidasEmAnalise.add(idPartida);
+                const apCasa = partidas[i].teamA.stats.attacks.d;
+                const apFora = partidas[i].teamB.stats.attacks.d;
+                const oddCasa = partidas[i].odds.starting['1X2'].bet365['1'];
+                const oddFora = partidas[i].odds.starting['1X2'].bet365['2'];
+                const placarCasa = partidas[i].teamA.score.f;
+                const placarFora = partidas[i].teamB.score.f;
+                if(casaFavoritoPressao(apCasa,apFora,oddCasa,placarCasa,placarCasa,idPartida,minutos,partidasNotificadas) || foraFavoritoPressao(apCasa, apFora, oddFora, placarCasa, placarFora, idPartida, minutos, partidasNotificadas)){
+                    const nomeCasa = partidas[i].teamA.name;
+                    const nomeFora = partidas[i].teamB.name;
+                    const mensagem = `*${nomeCasa}* vs *${nomeFora}*\n\n⚽ Placar: ${placarCasa} x ${placarFora}\n⚔️ Ataques Perigosos: ${apCasa >= 65 ? '*' + apCasa + '* 🔥' : apCasa} x ${apFora >= 65 ? '*' + apFora + '* 🔥' : apFora}\n📈 Odds Pré: ${oddCasa <= 1.40 ? oddCasa + ' 👑' : oddCasa} x ${oddFora <= 1.40 ? oddFora + ' 👑' : oddFora}\n🕛 Tempo: ${minutos}\n\n🤖 *Entrar em OVER GOL HT*`;
+                    await enviarMensagemTelegram(chat_bot,mensagem);
+                    console.log(mensagem);
+                    partidasNotificadas.add(idPartida);
+                }
+            } else {
+                partidasEmAnalise.delete(idPartida);
+            }
         }
+    } catch (error) {
+        console.error(error);
     }
 }
-
-analisarPartidas()
-
-setInterval(iniciar, 60000);
 
 async function iniciar() {
     try {
         await analisarPartidas();
-        console.log(qtdPartidas + " Jogos ao vivo,"+" Analisando " + partidasEmAnalise.size + " Partidas," + " Partidas Notificadas: ["+ [...partidasNotificadas].join(", ")+"]");
+        console.log("Ao vivo: " + qtdPartidas + "\nAnalisando: " + partidasEmAnalise.size + "\nPartidas Notificadas: ["+ [...partidasNotificadas].join(", ")+"]");
     } catch (error) {
-        console.log(error);
-        await enviarMensagemTelegram(chat_error,error);
+        console.log(error)
     }
 }
 
+setInterval(iniciar, 60000);
+
 const port = process.env.PORT || 3003; 
 
-app.get('/over-ht', (req, res) => {
-    const horaAtual = new Date().toLocaleString();
-    res.send("<b>BOT OVER HT</b><br>"+ " 🚨 "+ qtdPartidas + " Jogos ao vivo<br>"+" 🤖 Analisando " + partidasEmAnalise.size + " Partidas<br>" + " 💾 Partidas Notificadas: ["+ [...partidasNotificadas].join(", ")+"]<br>" + " ⏰ Hora atual: " + horaAtual);
+app.get('/ht', (req, res) => {
+    res.send("<b>BOT HT</b><br>"+ " 🚨 "+ qtdPartidas + " Jogos ao vivo<br>"+" 🤖 Analisando " + partidasEmAnalise.size + " Partidas<br>" + " 💾 Partidas Notificadas: ["+ [...partidasNotificadas].join(", ")+"]");
 });
 
-app.get('/over-ht/aovivo', (req, res) => {
-    const nomesDosTimes = [...partidasEmAnalise]; // Convertendo o Set para um array
-    res.send(nomesDosTimes);  
+app.get('/ht/aovivo', (req, res) => {
+    res.send([...partidasEmAnalise]);  
 });
 
-// Inicie o servidor para ouvir na porta especificada
 app.listen(port, () => {
     console.log(`Servidor rodando na porta ${port}`);
 });

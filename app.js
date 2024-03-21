@@ -60,8 +60,8 @@ async function analisarPartidas(){
                 partidasEmAnalise.add(idPartida);
                 const apCasa = partidas[i].teamA.stats.attacks.d;
                 const apFora = partidas[i].teamB.stats.attacks.d;
-                const oddCasa = partidas[i].odds.starting['1X2'].bet365['1'];
-                const oddFora = partidas[i].odds.starting['1X2'].bet365['2'];
+                const oddCasa = partidas[i].odds.kickoff['1X2'].bet365['1'];
+                const oddFora = partidas[i].odds.kickoff['1X2'].bet365['2'];
                 const placarCasa = partidas[i].teamA.score.f;
                 const placarFora = partidas[i].teamB.score.f;
                 if(casaFavoritoPressao(apCasa,apFora,oddCasa,placarCasa,placarCasa,idPartida,minutos,partidasNotificadas) || foraFavoritoPressao(apCasa, apFora, oddFora, placarCasa, placarFora, idPartida, minutos, partidasNotificadas)){

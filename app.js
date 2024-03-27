@@ -62,12 +62,13 @@ async function analisarPartidas(){
                 const apFora = partidas[i].teamB.stats.attacks.d;
                 const oddCasa = partidas[i].odds.kickoff['1X2'].bet365['1'];
                 const oddFora = partidas[i].odds.kickoff['1X2'].bet365['2'];
-                const placarCasa = partidas[i].teamA.score.f;
-                const placarFora = partidas[i].teamB.score.f;
+                const placarCasa = parseFloat(partidas[i].teamA.score.f);
+                const placarFora = parseFloat(partidas[i].teamB.score.f);
+                const placar = placarCasa + placarFora + 0.5;
                 if(casaFavoritoPressao(apCasa,apFora,oddCasa,placarCasa,placarCasa,idPartida,minutos,partidasNotificadas) || foraFavoritoPressao(apCasa, apFora, oddFora, placarCasa, placarFora, idPartida, minutos, partidasNotificadas)){
                     const nomeCasa = partidas[i].teamA.name;
                     const nomeFora = partidas[i].teamB.name;
-                    const mensagem = `*${nomeCasa}* vs *${nomeFora}*\n\n⚽ Placar: ${placarCasa} x ${placarFora}\n⚔️ Ataques Perigosos: ${apCasa >= 65 ? '*' + apCasa + '* 🔥' : apCasa} x ${apFora >= 65 ? '*' + apFora + '* 🔥' : apFora}\n📈 Odds Pré: ${oddCasa <= 1.40 ? oddCasa + ' 👑' : oddCasa} x ${oddFora <= 1.40 ? oddFora + ' 👑' : oddFora}\n🕛 Tempo: ${minutos}\n\n🤖 *Entrar em OVER GOL HT*`;
+                    const mensagem = `*${nomeCasa}* vs *${nomeFora}*\n\n⚽ Placar: ${placarCasa} x ${placarFora}\n⚔️ Ataques Perigosos: ${apCasa >= 65 ? '*' + apCasa + '* 🔥' : apCasa} x ${apFora >= 65 ? '*' + apFora + '* 🔥' : apFora}\n📈 Odds Pré: ${oddCasa <= 1.40 ? oddCasa + ' 👑' : oddCasa} x ${oddFora <= 1.40 ? oddFora + ' 👑' : oddFora}\n🕛 Tempo: ${minutos}\n\n🤖 *Entrar em OVER ${placar} GOLS HT*`;
                     await enviarMensagemTelegram(chat_bot,mensagem);
                     console.log(mensagem);
                     partidasNotificadas.add(idPartida);
